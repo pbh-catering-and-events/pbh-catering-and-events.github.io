@@ -790,6 +790,7 @@ footer .brand{font-size:1.05rem}
 @media (max-width:520px){.dbox .opts{grid-template-columns:1fr}.dbox-count{margin-left:0}}
 .charc-box{display:grid;gap:6px;margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--cream);border:1.5px dashed var(--gold)}
 .charc-box[hidden]{display:none}
+.mail-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding:14px;border-radius:14px;background:var(--cream);border:1.5px dashed var(--gold)}.mail-pick .lab{flex-basis:100%;font-weight:800;color:var(--plum-2)}.mail-pick .help{flex-basis:100%}.mail-pick[hidden]{display:none}
 .charc-box label{font-weight:800;color:var(--plum-2);font-size:.95rem}
 .mail-status.maybe{background:var(--gold-soft);border-color:var(--gold);color:var(--plum-2)}.mail-status.maybe .ms-ico{background:var(--gold-deep)}
 </style>
@@ -1367,10 +1368,15 @@ footer .brand{font-size:1.05rem}
         <pre id="summary"></pre>
         <div class="cta">
           <a class="btn btn-gold" id="waLink" href="https://wa.me/26775660879" target="_blank" rel="noopener">Send on WhatsApp</a>
-          <button class="btn btn-plum" type="button" id="mailLink">Send by email</button>
+          <button class="btn btn-plum" type="button" id="mailLink" aria-controls="mailPick">Send by email</button>
           <button class="btn btn-ghost" type="button" id="copyBtn">Copy my details</button>
           <button class="btn btn-ghost" type="button" id="editBtn">Edit my request</button>
         </div>
+        <div class="mail-pick" id="mailPick" hidden><span class="lab">How would you like to email us?</span>
+          <a class="btn btn-plum" id="mailGmail" href="#" target="_blank" rel="noopener">Open Gmail</a>
+          <a class="btn btn-ghost" id="mailApp" href="#">Open my email app</a>
+          <button class="btn btn-ghost" type="button" id="mailCopy">Copy my details</button>
+          <span class="help">Or email your details to <b>admin@pbhgroup.co.bw</b> from any email.</span></div>
         <p class="send-note" id="sendNote" hidden role="status"><span class="ms-ico" aria-hidden="true">&#10003;</span><span id="sendNoteTxt"></span></p>
         <span class="copied" id="copied" hidden>Copied. Paste it into WhatsApp (+267 75 660 879) or an email to admin@pbhgroup.co.bw.</span>
       </div>
@@ -2074,19 +2080,24 @@ footer .brand{font-size:1.05rem}
     }catch(e){fail()}
   }
   var hiddenDuring=false;document.addEventListener('visibilitychange',function(){if(document.hidden)hiddenDuring=true});
-  function mailApp(){
+  function mailParts(){
     var to='admin@pbhgroup.co.bw',cc='tina.personal.2006@gmail.com,peter@pbhgroup.co.bw';
-    var b=lastBody; if(b.length>1800)b=b.slice(0,1800)+'\n...(the rest of my request is in my WhatsApp message / copied details)';
-    try{navigator.clipboard&&navigator.clipboard.writeText(lastBody)}catch(e){}
-    var href='mailto:'+to+'?cc='+encodeURIComponent(cc)+'&subject='+encodeURIComponent(lastSubj)+'&body='+encodeURIComponent(b);
-    window.location.href=href;
-    $('sendNoteTxt').innerHTML='<b>Your email app should open with your request typed in.</b> Press <b>Send</b> there. If nothing opened, your details are copied: paste them into an email to <b>admin@pbhgroup.co.bw</b>.';$('sendNote').hidden=false;
+    var b=lastBody; if(b.length>1800)b=b.slice(0,1800)+'\n...(the rest of my request is in my copied details)';
+    return {to:to,cc:cc,b:b}}
+  function mailApp(){
+    var m=mailParts();
+    $('mailGmail').href='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(m.to)+'&cc='+encodeURIComponent(m.cc)+'&su='+encodeURIComponent(lastSubj)+'&body='+encodeURIComponent(m.b);
+    $('mailApp').href='mailto:'+m.to+'?cc='+encodeURIComponent(m.cc)+'&subject='+encodeURIComponent(lastSubj)+'&body='+encodeURIComponent(m.b);
+    $('mailPick').hidden=!$('mailPick').hidden;
+    if(!$('mailPick').hidden)$('mailPick').scrollIntoView({block:'nearest',behavior:'smooth'});
   }
+  ['mailGmail','mailApp'].forEach(function(id){$(id).addEventListener('click',function(){
+    try{navigator.clipboard&&navigator.clipboard.writeText(lastBody)}catch(e){}
+    $('sendNoteTxt').innerHTML='<b>Your email should open with your request typed in.</b> Press <b>Send</b> there. If it opens empty, your details are copied: paste them into the email to <b>admin@pbhgroup.co.bw</b>.';$('sendNote').hidden=false})});
+  $('mailCopy').addEventListener('click',function(){$('copyBtn').click()});
   $('retryBtn').addEventListener('click',function(){
-    // Backup sender: a normal form post in a new tab (works even where the page can't send in the background)
-    try{$('fsForm').submit()}catch(e){}
-    $('retryRow').hidden=true;
-    setStatus('ok','<b>Sending in a new tab.</b> If that tab says <b>“Thanks”</b> or <b>“Submitted successfully”</b>, your booking is sent. If no tab opened, please use <b>Send on WhatsApp</b> below.');
+    $('retryRow').hidden=true; sending=false; hiddenDuring=false;
+    sendEmail(lastSubj,lastBody);
   });
   form.addEventListener('submit',function(ev){
     ev.preventDefault();
